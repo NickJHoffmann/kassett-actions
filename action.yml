@@ -200,7 +200,7 @@ runs:
       if: ${{ inputs.aws-secrets != '' }}
       shell: bash
       run: |
-        sudo apt install build-essential
+        sudo apt-get install build-essential
         sudo apt-get update && sudo apt-get install make
         pip install boto3
 
@@ -365,7 +365,7 @@ runs:
       shell: bash
       run: |
         source venv/bin/activate
-        eval "$KASSETT_TEST_COMMAND"
+        eval $KASSETT_TEST_COMMAND
 
     - name: Build Dependencies for Twine
       if: ${{ env.KASSETT_PUBLISH_PACKAGE_USING == 'twine' && env.KASSETT_CUSTOM_BUILD_COMMAND == '' }}
@@ -386,7 +386,7 @@ runs:
       shell: bash
       run: |
         source venv/bin/activate
-        eval "$KASSETT_CUSTOM_BUILD_COMMAND"
+        eval $KASSETT_CUSTOM_BUILD_COMMAND
 
     - name: Upload Twine
       if: ${{ env.KASSETT_PUBLISH_PACKAGE_USING == 'twine' }}
