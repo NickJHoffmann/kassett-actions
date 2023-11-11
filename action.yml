@@ -355,14 +355,10 @@ runs:
 
     - name: Install dependencies command
       if: ${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND != '' }}
-      shell: python
+      shell: bash
       run: |
-        import os
-        import subprocess
-        
-        command = "source venv/bin/activate ; " + os.environ.get("KASSETT_INSTALL_DEPENDENCIES_COMMAND")
-        cmd = command.split(" ")
-        subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        source venv/bin/activate
+        eval ${KASSETT_INSTALL_DEPENDENCIES_COMMAND}
 
     - name: Run test command
       if: ${{ env.KASSETT_TEST_COMMAND != '' }}
