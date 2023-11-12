@@ -355,10 +355,11 @@ runs:
 
     - name: Install dependencies command
       if: ${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND != '' }}
-      shell: usr/bin/bash -e {0}
+      shell: bash
       run: |
         source venv/bin/activate
-        eval ${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND }}
+        printf 'env.KASSETT_INSTALL_DEPENDENCIES_COMMAND=%q\n' "${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND }}"
+
 
     - name: Run test command
       if: ${{ env.KASSETT_TEST_COMMAND != '' }}
