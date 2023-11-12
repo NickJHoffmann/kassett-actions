@@ -362,10 +362,10 @@ runs:
 
     - name: Run test command
       if: ${{ env.KASSETT_TEST_COMMAND != '' }}
-      shell: bash
+      shell: python
       run: |
-        source venv/bin/activate
-        eval $KASSETT_TEST_COMMAND
+        import subprocess
+        subprocess.run(args="make setup", shell=True)
 
     - name: Build Dependencies for Twine
       if: ${{ env.KASSETT_PUBLISH_PACKAGE_USING == 'twine' && env.KASSETT_CUSTOM_BUILD_COMMAND == '' }}
