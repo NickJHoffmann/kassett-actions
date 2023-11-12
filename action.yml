@@ -355,14 +355,14 @@ runs:
 
     - name: Install dependencies command
       if: ${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND != '' }}
-      shell: bash
+      shell: usr/bin/bash -e {0}
       run: |
         source venv/bin/activate
-        ${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND }}
+        eval ${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND }}
 
     - name: Run test command
       if: ${{ env.KASSETT_TEST_COMMAND != '' }}
-      shell: sh
+      shell: /usr/bin/bash -e {
       run: |
         source venv/bin/activate
         cm="make setup"
