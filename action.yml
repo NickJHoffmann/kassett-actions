@@ -358,8 +358,7 @@ runs:
       shell: bash
       run: |
         source venv/bin/activate
-        cmd="$KASSETT_INSTALL_DEPENDENCIES_COMMAND"
-        eval $("$cmd")
+        ${{ env.KASSETT_INSTALL_DEPENDENCIES_COMMAND }}
 
     - name: Run test command
       if: ${{ env.KASSETT_TEST_COMMAND != '' }}
