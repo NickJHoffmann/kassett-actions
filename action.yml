@@ -362,7 +362,7 @@ runs:
 
     - name: Run test command
       if: ${{ env.KASSETT_TEST_COMMAND != '' }}
-      shell: bash
+      shell: sh
       run: |
         source venv/bin/activate
         command="make setup"
