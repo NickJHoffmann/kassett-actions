@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "kassett-actions"
+version = "1"
+description = "Github workflows for general use cases."
+authors = ["Samuel Chai <samuel.chai.develop@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.7,<3.10"
+
+boto3 = {optional = true, version = ">=1.29.4"}
+requests = {optional = true, version = ">=2.31.0"}
+
+[tool.poetry.extras]
+setup-environment = ["boto3"]
+all = ["boto3", "requests"]
