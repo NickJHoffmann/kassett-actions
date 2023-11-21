@@ -1,9 +1,9 @@
-import os
 import json
+import os
 
-from kassett_actions.misc import clean_input
 from kassett_actions.aws import extract_secrets
 from kassett_actions.github import inject_to_environment, normalise_environment_variables
+from kassett_actions.misc import clean_input
 
 
 def write_aws_keys():

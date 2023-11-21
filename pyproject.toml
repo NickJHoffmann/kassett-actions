@@ -1,15 +1,25 @@
 [tool.poetry]
 name = "kassett-actions"
-version = "1"
+version = "0.1.0"
 description = "Github workflows for general use cases."
 authors = ["Samuel Chai <samuel.chai.develop@gmail.com>"]
+packages = [
+    {include = "kassett_actions", from = "src"}
+]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.10"
+python = ">=3.8"
 
-boto3 = {optional = true, version = ">=1.29.4"}
-requests = {optional = true, version = ">=2.31.0"}
+boto3 =">=1.29.4"
+requests = ">=2.31.0"
 
-[tool.poetry.extras]
-setup-environment = ["boto3"]
-all = ["boto3", "requests"]
+[tool.poetry.group.dev.dependencies]
+isort = "^5.12.0"
+pylint = "^3.0.2"
+pytest = ">=7.4.3"
+yapf = "^0.40.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+

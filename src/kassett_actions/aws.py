@@ -1,17 +1,19 @@
 import json
-import boto3
 from typing import List
 
-from kassett_actions.misc import valid_json, coalesce
+import boto3
+
+from kassett_actions.misc import coalesce, valid_json
 
 
 class Secret(object):
+
     def __init__(
-            self,
-            env_name: str = None,
-            env_name_prefix: str = None,
-            secret_name: str = None,
-            secret_name_prefix: str = None,
+        self,
+        env_name: str = None,
+        env_name_prefix: str = None,
+        secret_name: str = None,
+        secret_name_prefix: str = None,
     ):
         self.env_name = env_name
         self.env_name_prefix = env_name_prefix
@@ -29,13 +31,8 @@ class Secret(object):
                 k = prefix + k.upper().replace("-", "_")
                 put[k] = v
         else:
-            put[
-                coalesce(
-                    self.env_name,
-                    self.env_name_prefix,
-                    value["Name"].upper().replace("-", "_")
-                )
-            ] = value["SecretString"]
+            put[coalesce(self.env_name, self.env_name_prefix,
+                         value["Name"].upper().replace("-", "_"))] = value["SecretString"]
         return put
 
 
@@ -60,10 +57,13 @@ def _potential_secret(obj: str):
 def map_secret_arns(paginator, secrets: List[Secret]):
     for page in paginator.paginate():
         for name in page['SecretList']:
-            i = next((i for i, x in enumerate(secrets) if x.secret_name is not None and x.secret_name == name["Name"]), None)
+            i = next((i for i, x in enumerate(secrets)
+                      if x.secret_name is not None and x.secret_name == name["Name"]),
+                     None)
             if i is not None:
                 secrets[i].arn = name["ARN"]
-            i = next((i for i, x in enumerate(secrets) if x.secret_name_prefix in x and name["Name"].startswith(x.secret_name_prefix)), None)
+            i = next((i for i, x in enumerate(secrets) if x.secret_name_prefix in x
+                      and name["Name"].startswith(x.secret_name_prefix)), None)
             if i is not None:
                 secrets[i].arn = name["ARN"]
 
@@ -76,4 +76,8 @@ def extract_secrets(secrets: List[str]):
     client = boto3.client('secretsmanager')
     paginator = client.get_paginator('list_secrets')
     map_secret_arns(paginator, secrets_to_retrieve)
-    return {key: value for d in secrets_to_retrieve for key, value in d.resolve(client).items()}
+    return {
+        key: value
+        for d in secrets_to_retrieve
+        for key, value in d.resolve(client).items()
+    }
