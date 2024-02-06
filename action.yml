@@ -1,5 +1,5 @@
 
-name: Autocommit Changed Files
+name: Python Setup Environment
 author: kassett
 description: Autocommit all files that have changed - or optionally that have been added -- in a repository.
 
