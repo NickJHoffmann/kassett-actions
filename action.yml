@@ -69,7 +69,7 @@ runs:
 
     - name: Install Boto3
       if: ${{ inputs.aws-secrets != '' && inputs.aws-region != '' }}
-      uses: bash
+      shell: bash
       run: |
         pip install boto3
 
