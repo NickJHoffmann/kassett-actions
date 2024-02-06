@@ -99,7 +99,7 @@ runs:
                     if arg is not None:
                         return arg
                 return None
-            
+        
             def clean_input(payload: str):
                 payload = payload.replace("\n", "")
                 response = []
@@ -107,22 +107,22 @@ runs:
                 for secret in secrets:
                     response.append(secret.strip())
                 return response
-            
+        
             class Secret(object):
-            
+        
                 def __init__(
-                    self,
-                    env_name: str = None,
-                    env_name_prefix: str = None,
-                    secret_name: str = None,
-                    secret_name_prefix: str = None,
+                        self,
+                        env_name: str = None,
+                        env_name_prefix: str = None,
+                        secret_name: str = None,
+                        secret_name_prefix: str = None,
                 ):
                     self.env_name = env_name
                     self.env_name_prefix = env_name_prefix
                     self.secret_name = secret_name
                     self.secret_name_prefix = secret_name_prefix
                     self.arn = None
-            
+        
                 def resolve(self, client):
                     put = {}
                     value = client.get_secret_value(SecretId=self.arn)
@@ -136,7 +136,7 @@ runs:
                         put[coalesce(self.env_name, self.env_name_prefix,
                                      value["Name"].upper().replace("-", "_"))] = value["SecretString"]
                     return put
-            
+        
             def _potential_secret(obj: str):
                 temp = {}
                 if "=" in obj:
@@ -153,7 +153,7 @@ runs:
                     if t[0] != "":
                         temp["env_name"] = t[0]
                 return Secret(**temp)
-            
+        
             def map_secret_arns(paginator, secrets: List[Secret]):
                 for page in paginator.paginate():
                     for name in page['SecretList']:
@@ -162,7 +162,7 @@ runs:
                                  None)
                         if i is not None:
                             secrets[i].arn = name["ARN"]
-                        i = next((i for i, x in enumerate(secrets) if x.secret_name_prefix in x
+                        i = next((i for i, x in enumerate(secrets) if x.secret_name_prefix is not None
                                   and name["Name"].startswith(x.secret_name_prefix)), None)
                         if i is not None:
                             secrets[i].arn = name["ARN"]
@@ -175,12 +175,12 @@ runs:
                         f.write("\n".join(lines))
                 else:
                     return lines
-            
+        
             def extract_secrets(secrets: List[str]):
                 secrets_to_retrieve: List[Secret] = []
                 for i in secrets:
                     secrets_to_retrieve.append(_potential_secret(i))
-            
+        
                 client = boto3.client('secretsmanager')
                 paginator = client.get_paginator('list_secrets')
                 map_secret_arns(paginator, secrets_to_retrieve)
@@ -192,6 +192,7 @@ runs:
             keys = os.environ.get("AWS_KEYS")
             injections = extract_secrets(clean_input(keys))
             return inject_to_environment(injections)
+        
         
         write_aws_keys()
 
