@@ -1,0 +1,271 @@
+
+name: Autocommit Changed Files
+author: kassett
+description: Autocommit all files that have changed - or optionally that have been added -- in a repository.
+
+inputs:
+  python-version:
+    description: 'The description of the Python version to be used. For now it must be supported by setup-python3'
+    default: "3.9"
+    required: false
+
+  install-docker:
+    description: 'Installation of Docker and Docker Compose.'
+    required: false
+    default: "false"
+
+  connect-to-vpn:
+    description: 'The name of the VPN to connect. Currently OpenVPN, Pritunl and Tailscale are supported.'
+    required: false
+    default: ''
+
+  aws-role:
+    description: 'AWS role to assume.'
+    default: ''
+    required: false
+
+  aws-region:
+    description: 'AWS role region.'
+    default: ''
+    required: false
+
+  aws-secrets:
+    description: 'Extract AWS secrets as variables.'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Docker Compose
+      if: ${{ inputs.install-docker != 'false' }}
+      uses: ndeloof/install-compose-action@v0.0.1
+      with:
+        version: v2.1.0
+
+    - name: Set up Docker Buildx
+      if: ${{ inputs.install-docker != 'false' }}
+      uses: docker/setup-buildx-action@v2
+
+    - name: Set up Python x
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Set up Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+
+    - name: Assume AWS Role
+      if: ${{ inputs.aws-role != '' && inputs.aws-region != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ inputs.aws-region }}
+        role-to-assume: ${{ inputs.aws-role }}
+
+    - name: Install Boto3
+      if: ${{ inputs.aws-secrets != '' && inputs.aws-region != '' }}
+      uses: bash
+      run: |
+        pip install boto3
+
+    - name: Grab AWS Keys
+      if: ${{ inputs.aws-secrets != '' && inputs.aws-region != '' }}
+      shell: python
+      env:
+        AWS_KEYS: ${{ inputs.aws-secrets }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-region }}
+      run: |
+        import os
+        import json
+        from typing import List
+        import boto3
+        
+        
+        def write_aws_keys():
+            def valid_json(obj: str):
+                try:
+                    json.loads(obj)
+                except ValueError:
+                    return False
+                return True
+        
+            def coalesce(*args):
+                for arg in args:
+                    if arg is not None:
+                        return arg
+                return None
+            
+            def clean_input(payload: str):
+                payload = payload.replace("\n", "")
+                response = []
+                secrets = payload.split(",")
+                for secret in secrets:
+                    response.append(secret.strip())
+                return response
+            
+            class Secret(object):
+            
+                def __init__(
+                    self,
+                    env_name: str = None,
+                    env_name_prefix: str = None,
+                    secret_name: str = None,
+                    secret_name_prefix: str = None,
+                ):
+                    self.env_name = env_name
+                    self.env_name_prefix = env_name_prefix
+                    self.secret_name = secret_name
+                    self.secret_name_prefix = secret_name_prefix
+                    self.arn = None
+            
+                def resolve(self, client):
+                    put = {}
+                    value = client.get_secret_value(SecretId=self.arn)
+                    secret_string = json.loads(value["SecretString"])
+                    prefix = coalesce(self.env_name, self.env_name_prefix, "")
+                    if valid_json(value["SecretString"]):
+                        for k, v in secret_string.items():
+                            k = prefix + k.upper().replace("-", "_")
+                            put[k] = v
+                    else:
+                        put[coalesce(self.env_name, self.env_name_prefix,
+                                     value["Name"].upper().replace("-", "_"))] = value["SecretString"]
+                    return put
+            
+            def _potential_secret(obj: str):
+                temp = {}
+                if "=" in obj:
+                    t = obj.split("=")
+                else:
+                    t = ["", obj]
+                if t[1].endswith("*"):
+                    temp["secret_name_prefix"] = t[1][0:-1]
+                else:
+                    temp["secret_name"] = t[1]
+                if t[0].endswith("*"):
+                    temp["env_name_prefix"] = t[0][0:-1]
+                else:
+                    if t[0] != "":
+                        temp["env_name"] = t[0]
+                return Secret(**temp)
+            
+            def map_secret_arns(paginator, secrets: List[Secret]):
+                for page in paginator.paginate():
+                    for name in page['SecretList']:
+                        i = next((i for i, x in enumerate(secrets)
+                                  if x.secret_name is not None and x.secret_name == name["Name"]),
+                                 None)
+                        if i is not None:
+                            secrets[i].arn = name["ARN"]
+                        i = next((i for i, x in enumerate(secrets) if x.secret_name_prefix in x
+                                  and name["Name"].startswith(x.secret_name_prefix)), None)
+                        if i is not None:
+                            secrets[i].arn = name["ARN"]
+        
+            def inject_to_environment(variables):
+                lines = ["{}={}".format(k, v) for k, v in variables.items()]
+                if os.environ.get("GITHUB_CI") is not None:
+                    env_file = os.getenv('GITHUB_ENV')
+                    with open(env_file, "a") as f:
+                        f.write("\n".join(lines))
+                else:
+                    return lines
+            
+            def extract_secrets(secrets: List[str]):
+                secrets_to_retrieve: List[Secret] = []
+                for i in secrets:
+                    secrets_to_retrieve.append(_potential_secret(i))
+            
+                client = boto3.client('secretsmanager')
+                paginator = client.get_paginator('list_secrets')
+                map_secret_arns(paginator, secrets_to_retrieve)
+                return {
+                    key: value
+                    for d in secrets_to_retrieve
+                    for key, value in d.resolve(client).items()
+                }
+            keys = os.environ.get("AWS_KEYS")
+            injections = extract_secrets(clean_input(keys))
+            return inject_to_environment(injections)
+        
+        write_aws_keys()
+
+
+    - name: Export ENV Variables
+      shell: python
+      env:
+        KASSETT_INPUTS: ${{toJSON(inputs)}}
+      run: |
+        import json
+        import os
+        
+        
+        def normalise_environment_variables_for_kassett():
+            def normalise_environment_variables(inputs):
+                keys = [x for x in inputs.keys() if x.endswith("-env-name")]
+                new_env_variables = {}
+                banned_keys = []
+                required = []
+        
+                for k in keys:
+                    new_key = k.replace("-env-name", "")
+                    var_name = "KASSETT_{}".format(new_key.upper().replace("-", "_"))
+                    required.append(var_name)
+                    if new_key in inputs and inputs[new_key] != '' and inputs[new_key] != "''":
+                        new_env_variables[var_name] = inputs[new_key]
+        
+                    else:
+                        if inputs[k] is not None and inputs[k] in os.environ:
+                            new_env_variables[var_name] = os.environ[inputs[k]]
+                    banned_keys.append(new_key)
+                    banned_keys.append(k)
+        
+                new_env_variables["KASSETT_INPUTS"] = ""
+        
+                for k, v in inputs.items():
+                    if k not in banned_keys:
+                        if " " in v and not v.startswith("\""):
+                            v = '"{}"'.format(v)
+                        new_key = "KASSETT_{}".format(k.upper().replace("-", "_"))
+                        new_env_variables[new_key] = v
+        
+                for r in required:
+                    if r not in new_env_variables:
+                        new_env_variables[r] = ""
+                return new_env_variables
+        
+            def inject_to_environment(variables):
+                lines = ["{}={}".format(k, v) for k, v in variables.items()]
+                if os.environ.get("GITHUB_CI") is not None:
+                    env_file = os.getenv('GITHUB_ENV')
+                    with open(env_file, "a") as f:
+                        f.write("\n".join(lines))
+                else:
+                    return lines
+        
+            injections = normalise_environment_variables(json.loads(os.environ.get("KASSETT_INPUTS")))
+            return inject_to_environment(injections)
+        
+        
+        normalise_environment_variables_for_kassett()
+
+    - name: Connect to Tailscale Without Tags
+      if: ${{ inputs.connect-to-vpn == 'tailscale' }}
+      uses: tailscale/github-action@v2
+      with:
+        oauth-client-id: ${{ env.KASSETT_TAILSCALE_OAUTH_CLIENT_ID }}
+        oauth-secret: ${{ env.KASSETT_TAILSCALE_OAUTH_SECRET }}
+        tags: ${{ env.KASSETT_TAILSCALE_TAGS }}
+
+    - name: Connect to Pritunl
+      if: ${{ inputs.connect-to-vpn == 'pritunl' }}
+      uses: nathanielvarona/pritunl-client-github-action@v1
+      with:
+        profile-file: ${{ env.KASSETT_PRITUNL_PROFILE_FILE }}
+        profile-pin: ${{ env.KASSETT_PRITUNL_PROFILE_PIN }}
+        profile-server: ${{ env.KASSETT_PRITUNL_PROFILE_SERVER }}
