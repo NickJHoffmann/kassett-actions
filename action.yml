@@ -264,6 +264,6 @@ runs:
       if: ${{ inputs.connect-to-vpn == 'pritunl' }}
       uses: nathanielvarona/pritunl-client-github-action@v1
       with:
-        profile-file: ${{ env.KASSETT_PRITUNL_PROFILE_FILE }}
-        profile-pin: ${{ env.KASSETT_PRITUNL_PROFILE_PIN }}
-        profile-server: ${{ env.KASSETT_PRITUNL_PROFILE_SERVER }}
+        profile-file: ${{ env.PRITUNL_PROFILE_FILE }}
+        profile-pin: ${{ env.PRITUNL_PROFILE_PIN }}
+        profile-server: ${{ env.PRITUNL_PROFILE_SERVER }}
