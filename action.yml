@@ -252,11 +252,6 @@ runs:
 #
 #        normalise_environment_variables_for_kassett()
 
-    - name: Echo Tailscale
-      shell: bash
-      run: |
-        echo "$TAILSCALE_OAUTH_CLIENT_ID" >> $GITHUB_OUTPUT
-
     - name: Connect to Tailscale Without Tags
       if: ${{ inputs.connect-to-vpn == 'tailscale' }}
       uses: tailscale/github-action@v2
