@@ -169,9 +169,9 @@ runs:
         
             def inject_to_environment(variables):
                 lines = ["{}={}".format(k, v) for k, v in variables.items()]
-                  env_file = os.getenv('GITHUB_ENV')
-                  with open(env_file, "a") as f:
-                      f.write("\n".join(lines))
+                env_file = os.getenv('GITHUB_ENV')
+                with open(env_file, "a") as f:
+                    f.write("\n".join(lines))
         
             def extract_secrets(secrets: List[str]):
                 secrets_to_retrieve: List[Secret] = []
