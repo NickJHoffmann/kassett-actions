@@ -126,7 +126,7 @@ runs:
                 def resolve(self, client):
                     put = {}
                     value = client.get_secret_value(SecretId=self.arn)
-                    secret_string = json.loads(value["SecretString"])
+                    secret_string = value["SecretString"]
                     prefix = coalesce(self.env_name, self.env_name_prefix, "")
                     if valid_json(value["SecretString"]):
                         for k, v in secret_string.items():
